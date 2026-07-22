@@ -226,6 +226,7 @@ public:
     uint8_t get_led_len() const { return _led_len; }
     uint32_t get_led_type() const { return _led_type; }
     int8_t get_rgb_led_brightness_percent() const;
+    int8_t get_custom_led_pattern_enable() const { return _custom_led_pattern_enable; }
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     HAL_Semaphore sf_window_mutex;
@@ -251,6 +252,7 @@ private:
     AP_Int8 _buzzer_level;
     AP_Int8 _buzzer_volume;
     AP_Int8 _led_len;
+    AP_Int8 _custom_led_pattern_enable;
 
     char _send_text[NOTIFY_TEXT_BUFFER_SIZE];
     uint32_t _send_text_updated_millis; // last time text changed
