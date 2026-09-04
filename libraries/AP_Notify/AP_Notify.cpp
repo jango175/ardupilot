@@ -208,6 +208,13 @@ const AP_Param::GroupInfo AP_Notify::var_info[] = {
     // @RebootRequired: True
     AP_GROUPINFO("LED_LEN", 9, AP_Notify, _led_len, NOTIFY_LED_LEN_DEFAULT),
 
+    // @Param: CSTM_LED_EN
+    // @DisplayName: Custom LED Pattern Enable
+    // @Description: Enables the custom armed flight LED pattern (required 16 LEDs)
+    // @Values: 0:Disabled,1:Enabled
+    // @User: Standard
+    AP_GROUPINFO("CSTM_LED_EN", 10, AP_Notify, _custom_led_pattern_enable, 0),
+
     AP_GROUPEND
 };
 

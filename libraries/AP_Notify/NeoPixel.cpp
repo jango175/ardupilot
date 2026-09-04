@@ -79,4 +79,108 @@ uint16_t NeoPixel::init_ports()
     return mask;
 }
 
+bool NeoPixel::hw_set_rgb(uint8_t red, uint8_t green, uint8_t blue)
+{
+    if (pNotify->get_custom_led_pattern_enable() != 1) {
+        return SerialLED::hw_set_rgb(red, green, blue);
+    }
+
+    bool in_failsafe = (AP_Notify::flags.failsafe_radio ||
+                        AP_Notify::flags.failsafe_gcs ||
+                        AP_Notify::flags.failsafe_battery ||
+                        AP_Notify::flags.failsafe_ekf ||
+                        AP_Notify::flags.ekf_bad ||
+                        AP_Notify::flags.gps_glitching ||
+                        AP_Notify::flags.leak_detected ||
+                        AP_Notify::flags.parachute_release ||
+                        AP_Notify::flags.vehicle_lost ||
+                        AP_Notify::flags.initialising ||
+                        AP_Notify::flags.esc_calibration ||
+                        AP_Notify::flags.compass_cal_running ||
+                        AP_Notify::flags.temp_cal_running ||
+                        AP_Notify::flags.save_trim);
+
+    // intercept LEDs if drone is armed and there are no active failsafes
+    if (AP_Notify::flags.armed && !in_failsafe) {
+        return true;
+    }
+    else {
+        return SerialLED::hw_set_rgb(red, green, blue);
+    }
+}
+
+void NeoPixel::update()
+{
+    SerialLED::update();
+
+    if (pNotify->get_custom_led_pattern_enable() != 1) {
+        return;
+    }
+
+    bool in_failsafe = (AP_Notify::flags.failsafe_radio ||
+                        AP_Notify::flags.failsafe_gcs ||
+                        AP_Notify::flags.failsafe_battery ||
+                        AP_Notify::flags.failsafe_ekf ||
+                        AP_Notify::flags.ekf_bad ||
+                        AP_Notify::flags.gps_glitching ||
+                        AP_Notify::flags.leak_detected ||
+                        AP_Notify::flags.parachute_release ||
+                        AP_Notify::flags.vehicle_lost ||
+                        AP_Notify::flags.initialising ||
+                        AP_Notify::flags.esc_calibration ||
+                        AP_Notify::flags.compass_cal_running ||
+                        AP_Notify::flags.temp_cal_running ||
+                        AP_Notify::flags.save_trim);
+
+    if (AP_Notify::flags.armed && !in_failsafe) {
+        AP_SerialLED *led = AP_SerialLED::get_singleton();
+        if (led == nullptr) {
+            return;
+        }
+
+        uint8_t count = pNotify->get_led_len(); // read NTF_LED_LEN
+        if (count < 16) {
+            return;
+        }
+
+        uint8_t brightness = (_green_curr > _blue_curr) ? _green_curr : _blue_curr;
+        brightness = (brightness > _red_curr) ? brightness : _red_curr;
+
+        uint32_t now = AP_HAL::millis();
+        bool blink_on = (now % 1000) < 500;
+
+        uint16_t mask = SRV_Channels::get_output_channel_mask(SRV_Channel::k_LED_neopixel1);
+
+        for (uint8_t c = 0; c < 16; c++) {
+            if ((1U << c) & mask) {
+                uint8_t chan = c + 1;
+
+                for (uint8_t i = 0; i < count; i++) {
+                    // green LEDs: 0-2 and 4-6
+                    if (i <= 2 || (i >= 4 && i <= 6)) {
+                        led->set_RGB(chan, i, 0, brightness, 0);
+                    }
+                    // red LEDs: 8-10 and 12-14
+                    else if ((i >= 8 && i <= 10) || (i >= 12 && i <= 14)) {
+                        led->set_RGB(chan, i, brightness, 0, 0);
+                    }
+                    // blinking white LEDs: 3, 7, 11, 15
+                    else if (i == 3 || i == 7 || i == 11 || i == 15) {
+                        if (blink_on) {
+                            led->set_RGB(chan, i, brightness, brightness, brightness);
+                        } else {
+                            led->set_RGB(chan, i, 0, 0, 0);
+                        }
+                    }
+                    // turn off any extra LEDs
+                    else {
+                        led->set_RGB(chan, i, 0, 0, 0);
+                    }
+                }
+                led->send(chan);
+            }
+        }
+    }
+}
+
 #endif  // AP_NOTIFY_NEOPIXEL_ENABLED
