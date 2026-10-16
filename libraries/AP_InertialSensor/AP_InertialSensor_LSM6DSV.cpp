@@ -63,6 +63,7 @@ namespace {
 // ---- WHO_AM_I register (R) ----
 #define LSM6DSV_REG_WHO_AM_I                0x0F
 #define LSM6DSV_ID_LSM6DSV16X               0x70
+#define LSM6DSV_ID_LSM6DSK320X              0x75
 
 // ---- Accelerometer control register 1 (R/W) ----
 // [6:4] OP_MODE_XL: operating mode   [3:0] ODR_XL: output data rate
@@ -164,6 +165,7 @@ namespace {
 #define LSM6DSV_ACCEL_SCALE_4G              (GRAVITY_MSS *  4.0f / 32768.0f)
 #define LSM6DSV_ACCEL_SCALE_8G              (GRAVITY_MSS *  8.0f / 32768.0f)
 #define LSM6DSV_ACCEL_SCALE_16G             (GRAVITY_MSS * 16.0f / 32768.0f)
+#define LSM6DSK_ACCEL_SCALE_320G            (GRAVITY_MSS * 320.0f / 32768.0f)
 
 // ---- Gyroscope sensitivity per ST datasheet (mdps/LSB → rad/s) ----
 #define LSM6DSV_GYRO_SCALE_125DPS           radians(4.375f  / 1000.0f)
@@ -287,8 +289,20 @@ bool AP_InertialSensor_LSM6DSV::update()
 
 bool AP_InertialSensor_LSM6DSV::get_output_banner(char* banner, uint8_t banner_len)
 {
-    snprintf(banner, banner_len, "IMU%u: LSM6DSV16X %s sampling %.1fkHz",
+    const char* model_name = "Unknown";
+
+    switch (_lsm6dsv_type) {
+    case LSM6DSV_Type::LSM6DSV16X:
+        model_name = "LSM6DSV16X";
+        break;
+    case LSM6DSV_Type::LSM6DSK320X:
+        model_name = "LSM6DSK320X";
+        break;
+    }
+
+    snprintf(banner, banner_len, "IMU%u: %s %s sampling %.1fkHz",
              gyro_instance,
+             model_name,
              _fast_sampling ? "fast" : "normal",
              _backend_rate_hz * 0.001f);
     return true;
@@ -319,6 +333,10 @@ bool AP_InertialSensor_LSM6DSV::hardware_init()
         case LSM6DSV_Type::LSM6DSV16X:
             _gyro_scale = LSM6DSV_GYRO_SCALE_2000DPS;
             _accel_scale = LSM6DSV_ACCEL_SCALE_16G;
+            break;
+        case LSM6DSV_Type::LSM6DSK320X:
+            _gyro_scale = LSM6DSV_GYRO_SCALE_2000DPS;
+            _accel_scale = LSM6DSV_ACCEL_SCALE_16G; // might want to add 320G scale in the future
             break;
         }
 
@@ -375,6 +393,9 @@ bool AP_InertialSensor_LSM6DSV::check_whoami()
     switch (_whoami) {
     case LSM6DSV_ID_LSM6DSV16X:
         _lsm6dsv_type = LSM6DSV_Type::LSM6DSV16X;
+        return true;
+    case LSM6DSV_ID_LSM6DSK320X:
+        _lsm6dsv_type = LSM6DSV_Type::LSM6DSK320X;
         return true;
     }
 
